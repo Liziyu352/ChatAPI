@@ -6,7 +6,7 @@ Flask + Ant Design chat app with:
 - session login from `.env`
 - conversation sidebar with mobile Drawer support
 - OpenAI Responses-style API at `POST /v1/responses`
-- automatic conversation matching from request context
+- one request maps to one conversation item by default, while `conversation_id` or tool result `call_id` can continue an existing conversation
 
 ## Quick start
 
@@ -56,4 +56,4 @@ The `responses` endpoint accepts a compact OpenAI-style payload:
 }
 ```
 
-If `conversation_id` is omitted, the backend matches the request context to an existing conversation or creates a new one.
+If `conversation_id` is omitted, the backend normally creates a new conversation. The exception is a tool result request carrying `function_call_output.call_id`: it will be routed back to the conversation that produced that tool call.

@@ -163,20 +163,17 @@ def build_openai_response(
     model: str,
     conversation_id: str,
     assistant_text: str,
-    usage: dict[str, int],
+    usage: dict[str, int] | None,
     status: str = "completed",
+    output_items: list[dict[str, Any]] | None = None,
+    output_text: str | None = None,
 ) -> dict[str, Any]:
     created_at = int(time.time())
     message_id = f"msg_{uuid.uuid4().hex[:24]}"
-    output_text = assistant_text
-    return {
-        "id": response_id,
-        "object": "response",
-        "created_at": created_at,
-        "status": status,
-        "model": model,
-        "conversation_id": conversation_id,
-        "output": [
+    normalized_output_items = output_items
+    if normalized_output_items is None:
+        normalized_output_text = assistant_text if output_text is None else output_text
+        normalized_output_items = [
             {
                 "id": message_id,
                 "type": "message",
@@ -184,12 +181,22 @@ def build_openai_response(
                 "content": [
                     {
                         "type": "output_text",
-                        "text": output_text,
+                        "text": normalized_output_text,
                     }
                 ],
             }
-        ],
-        "output_text": output_text,
+        ]
+    else:
+        normalized_output_text = assistant_text if output_text is None else output_text
+    return {
+        "id": response_id,
+        "object": "response",
+        "created_at": created_at,
+        "status": status,
+        "model": model,
+        "conversation_id": conversation_id,
+        "output": normalized_output_items,
+        "output_text": normalized_output_text,
         "usage": usage,
     }
 

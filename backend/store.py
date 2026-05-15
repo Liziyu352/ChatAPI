@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -103,8 +104,20 @@ class ConversationStore:
         conn.execute("PRAGMA journal_mode=WAL")
         return conn
 
+    @contextmanager
+    def _connection(self):
+        conn = self._connect()
+        try:
+            yield conn
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def _init_db(self) -> None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS conversations (
@@ -193,7 +206,7 @@ class ConversationStore:
             message_count=0,
             last_message_preview="",
         )
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 """
                 INSERT INTO conversations
@@ -216,7 +229,7 @@ class ConversationStore:
         return conv
 
     def get_conversation(self, conversation_id: str, owner_id: str) -> Conversation | None:
-        with self._connect() as conn:
+        with self._connection() as conn:
             row = conn.execute(
                 """
                 SELECT
@@ -241,7 +254,7 @@ class ConversationStore:
         return self._row_to_conversation(row)
 
     def list_conversations(self, owner_id: str) -> list[Conversation]:
-        with self._connect() as conn:
+        with self._connection() as conn:
             rows = conn.execute(
                 """
                 SELECT
@@ -267,7 +280,7 @@ class ConversationStore:
     def delete_conversation(self, conversation_id: str, owner_id: str) -> None:
         if self.get_conversation(conversation_id, owner_id) is None:
             raise ValueError("conversation not found")
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 """
                 DELETE FROM messages
@@ -283,10 +296,46 @@ class ConversationStore:
                 (conversation_id, owner_id),
             )
 
+    def delete_conversations_except_latest(
+        self,
+        owner_id: str,
+        keep_count: int,
+    ) -> tuple[int, int]:
+        keep_count = max(0, int(keep_count))
+        conversations = self.list_conversations(owner_id)
+        stale_conversations = conversations[keep_count:]
+        deletable_ids = [
+            item.id
+            for item in stale_conversations
+            if item.metadata.get("realtime_status") != "waiting"
+        ]
+        skipped_count = len(stale_conversations) - len(deletable_ids)
+
+        if not deletable_ids:
+            return 0, skipped_count
+
+        placeholders = ", ".join("?" for _ in deletable_ids)
+        with self._connection() as conn:
+            conn.execute(
+                f"""
+                DELETE FROM messages
+                WHERE conversation_id IN ({placeholders})
+                """,
+                deletable_ids,
+            )
+            conn.execute(
+                f"""
+                DELETE FROM conversations
+                WHERE owner_id = ? AND id IN ({placeholders})
+                """,
+                (owner_id, *deletable_ids),
+            )
+        return len(deletable_ids), skipped_count
+
     def get_messages(self, conversation_id: str, owner_id: str) -> list[ConversationMessage]:
         if self.get_conversation(conversation_id, owner_id) is None:
             raise ValueError("conversation not found")
-        with self._connect() as conn:
+        with self._connection() as conn:
             rows = conn.execute(
                 """
                 SELECT id, conversation_id, role, content, status, response_id, metadata, created_at
@@ -310,6 +359,41 @@ class ConversationStore:
             for row in rows
         ]
 
+    def find_conversation_by_tool_call_id(
+        self, owner_id: str, tool_call_id: str
+    ) -> Conversation | None:
+        if not tool_call_id:
+            return None
+        with self._connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT
+                    c.*,
+                    COUNT(all_messages.id) AS message_count,
+                    COALESCE((
+                        SELECT substr(m2.content, 1, 120)
+                        FROM messages m2
+                        WHERE m2.conversation_id = c.id
+                        ORDER BY datetime(m2.created_at) DESC
+                        LIMIT 1
+                    ), '') AS last_message_preview,
+                    matched.metadata AS matched_metadata
+                FROM conversations c
+                JOIN messages matched ON matched.conversation_id = c.id
+                LEFT JOIN messages all_messages ON all_messages.conversation_id = c.id
+                WHERE c.owner_id = ?
+                GROUP BY c.id, matched.id
+                ORDER BY datetime(matched.created_at) DESC
+                """,
+                (owner_id,),
+            ).fetchall()
+        for row in rows:
+            metadata = _json_load(row["matched_metadata"], {})
+            if str(metadata.get("tool_call_id", "")).strip() != tool_call_id:
+                continue
+            return self._row_to_conversation(row)
+        return None
+
     def add_message(
         self,
         conversation_id: str,
@@ -329,7 +413,7 @@ class ConversationStore:
             response_id=response_id,
             metadata=metadata or {},
         )
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 """
                 INSERT INTO messages
@@ -387,7 +471,7 @@ class ConversationStore:
             context_signature if context_signature is not None else current.context_signature
         )
         new_metadata = metadata if metadata is not None else current.metadata
-        with self._connect() as conn:
+        with self._connection() as conn:
             conn.execute(
                 """
                 UPDATE conversations
@@ -499,25 +583,6 @@ class ConversationStore:
         if refreshed is None:
             raise ValueError("conversation not found")
         return refreshed
-
-    def match_or_create_conversation(
-        self, owner_id: str, context_signature: str, title_hint: str = ""
-    ) -> Conversation:
-        candidates = self.list_conversations(owner_id)
-        if not candidates:
-            return self.create_conversation(
-                owner_id,
-                title=build_title(title_hint),
-                context_signature=context_signature,
-            )
-        for candidate in candidates:
-            if candidate.context_signature == context_signature:
-                return candidate
-        return self.create_conversation(
-            owner_id,
-            title=build_title(title_hint),
-            context_signature=context_signature,
-        )
 
     @staticmethod
     def _row_to_conversation(row: sqlite3.Row) -> Conversation:
