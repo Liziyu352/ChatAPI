@@ -10,7 +10,7 @@
 默认提供：
 
 - 基于 `.env` 的用户名密码登录，支持可选 TOTP
-- 支持/chat/completions、/responses、/messages 三套接口
+- 支持 `/v1/chat/completions`、`/v1/responses`、`/messages` 三套接口
 - 会话列表与消息持久化能力，便于调试和查看上下文
 - 自动化回复输出能力，支持定时流式发送、循环输出，条件判断自动回复等场景
 - 可选 ntfy 消息推送
@@ -179,6 +179,8 @@ CHATAPI_WEB_DIST_DIR=./frontend/dist
 - `POST /api/conversations`
 - `POST /api/conversations/<id>/rename`
 - `POST /v1/responses`
+- `POST /v1/chat/completions`
+- `POST /messages`
 
 核心接口是 `/v1/responses`，接受 OpenAI Responses 风格请求，例如：  
 调用示例：  
@@ -204,4 +206,23 @@ curl https://127.0.0.1:5000/v1/responses \
     "stream": true
   }'
 
+```
+
+Anthropic Messages 兼容接口使用 `/messages`，例如：
+
+```bash
+curl https://127.0.0.1:5000/messages \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer sk-i-love-you-hutao' \
+  -d '{
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 1024,
+    "messages": [
+      {
+        "role": "user",
+        "content": "你好"
+      }
+    ],
+    "stream": true
+  }'
 ```

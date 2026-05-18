@@ -25,6 +25,42 @@ import type {
 
 const STORAGE_KEY = 'chatapi.conversationId'
 
+function buildVisibleMessages(messages: MessageItem[], draftBuffer: string): VisibleMessage[] {
+  const visible: VisibleMessage[] = []
+  const toolResultIndexByCallId = new Map<string, number>()
+
+  for (const item of messages) {
+    const isToolResult = item.metadata?.response_mode === 'tool_result'
+    const toolCallId = String(item.metadata?.tool_call_id ?? '').trim()
+
+    if (isToolResult && toolCallId) {
+      const existingIndex = toolResultIndexByCallId.get(toolCallId)
+      if (existingIndex != null) {
+        visible[existingIndex] = item
+        continue
+      }
+      toolResultIndexByCallId.set(toolCallId, visible.length)
+    }
+
+    visible.push(item)
+  }
+
+  if (!draftBuffer) {
+    return visible
+  }
+
+  return [
+    ...visible,
+    {
+      id: 'draft-buffer',
+      role: 'draft',
+      content: draftBuffer,
+      created_at: new Date().toISOString(),
+      draft: true,
+    },
+  ]
+}
+
 export function useChatWorkspace(isMobile: boolean) {
   const [booting, setBooting] = useState(true)
   const [auth, setAuth] = useState<AuthSession>({
@@ -81,20 +117,7 @@ export function useChatWorkspace(isMobile: boolean) {
   const availableToolSchemas = getLastToolSchemas(messages)
   const selectedToolSchema =
     availableToolSchemas.find((item) => item.name === toolName) ?? null
-  const visibleMessages: VisibleMessage[] = [
-    ...messages,
-    ...(draftBuffer
-      ? [
-          {
-            id: 'draft-buffer',
-            role: 'draft',
-            content: draftBuffer,
-            created_at: new Date().toISOString(),
-            draft: true,
-          },
-        ]
-      : []),
-  ]
+  const visibleMessages = buildVisibleMessages(messages, draftBuffer)
 
   function setDraftBufferForConversation(conversationId: string, value: string) {
     if (!conversationId) return

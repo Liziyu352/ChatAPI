@@ -567,7 +567,7 @@ def run_one_scenario(args: argparse.Namespace, scenario: Scenario, print_lock: t
         else:
             sdk_client = Anthropic(
                 api_key=args.api_key or "local-test-key",
-                base_url=f"{args.base_url.rstrip('/')}/apps/anthropic",
+                base_url=args.base_url.rstrip('/'),
                 http_client=shared_http_client,
                 default_headers=api_session.auth_headers,
             )

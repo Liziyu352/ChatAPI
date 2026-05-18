@@ -150,6 +150,18 @@ class TurnCoordinator:
             owner=owner,
             request_format=request_format,
         )
+        has_tool_results = any(
+            str(message_payload.get("metadata", {}).get("response_mode", "")).strip()
+            == "tool_result"
+            for message_payload in extracted_messages
+            if isinstance(message_payload, dict)
+        )
+        if has_tool_results:
+            extracted_messages = [
+                message_payload
+                for message_payload in extracted_messages
+                if str(message_payload.get("role") or "").strip() != "user"
+            ]
         updated_conversation = self.store.update_conversation(
             conversation.id,
             owner,
@@ -178,7 +190,7 @@ class TurnCoordinator:
             if extracted_messages:
                 for index, message_payload in enumerate(extracted_messages):
                     metadata = dict(message_payload.get("metadata") or {})
-                    if message_payload.get("role") == "user" and index == len(extracted_messages) - 1:
+                    if index == len(extracted_messages) - 1:
                         metadata = {**metadata, **request_debug_metadata}
                     self.store.add_message(
                         conversation.id,

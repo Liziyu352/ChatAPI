@@ -92,7 +92,7 @@ def register_response_routes(app: Flask, *, deps: AppDependencies) -> None:
         data = request.get_json(silent=True) or {}
         return handle_protocol_request(data, "chat_completions")
 
-    @app.post("/apps/anthropic/v1/messages")
+    @app.post("/messages")
     @auth.require_auth
     def anthropic_messages():
         data = request.get_json(silent=True) or {}
