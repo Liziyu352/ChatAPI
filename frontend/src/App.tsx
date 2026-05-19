@@ -3,6 +3,7 @@ import { Spin } from 'antd'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
 import './App.css'
+import { GithubButton } from './components/GithubButton'
 import { HomepageScreen } from './components/HomepageScreen'
 import { LoginScreen } from './components/LoginScreen'
 import { RegistrationScreen } from './components/RegistrationScreen'
@@ -102,7 +103,10 @@ function App() {
     <>
       {!location.pathname.startsWith('/app') ? (
         <div className="global-theme-toggle-wrap">
-          <ThemeToggle />
+          <div className="global-theme-toggle-group">
+            <GithubButton />
+            <ThemeToggle />
+          </div>
         </div>
       ) : null}
       <Routes>

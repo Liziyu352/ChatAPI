@@ -48,12 +48,21 @@ export function RegistrationScreen({ onRegistered, onBackToLogin }: Registration
         setConfig({
           registration_enabled: Boolean(data.registration_enabled),
           email_verification_enabled: Boolean(data.email_verification_enabled),
+          registration_email_domain_restriction_enabled: Boolean(data.registration_email_domain_restriction_enabled),
+          registration_email_domains: String(data.registration_email_domains ?? ''),
           geetest_enabled: Boolean(data.geetest_enabled),
           geetest_captcha_id: String(data.geetest_captcha_id ?? ''),
         })
       } catch {
         if (!active) return
-        setConfig({ registration_enabled: false, email_verification_enabled: false, geetest_enabled: false, geetest_captcha_id: '' })
+        setConfig({
+          registration_enabled: false,
+          email_verification_enabled: false,
+          registration_email_domain_restriction_enabled: false,
+          registration_email_domains: '',
+          geetest_enabled: false,
+          geetest_captcha_id: '',
+        })
       }
     }
     void load()
@@ -210,6 +219,11 @@ export function RegistrationScreen({ onRegistered, onBackToLogin }: Registration
           <Typography.Title level={2} className="login-title">
             ChatAPI 注册
           </Typography.Title>
+          {config.registration_email_domain_restriction_enabled ? (
+            <Typography.Paragraph className="login-desc" style={{ textAlign: 'center', marginBottom: 0 }}>
+              当前仅允许 {config.registration_email_domains || '指定'} 邮箱域名注册。
+            </Typography.Paragraph>
+          ) : null}
         </div>
         <Form
           form={form}

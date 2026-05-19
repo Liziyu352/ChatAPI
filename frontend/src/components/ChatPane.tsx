@@ -21,6 +21,7 @@ import {
 } from 'antd'
 import { LogoutOutlined, MenuOutlined, SaveOutlined, SendOutlined } from '@ant-design/icons'
 
+import { GithubButton } from './GithubButton'
 import { ThemeToggle } from './ThemeToggle'
 import { ToolField } from './ToolField'
 import { ChatMessageList } from './ChatMessageList'
@@ -178,7 +179,8 @@ export function ChatPane(props: ChatPaneProps) {
             </Typography.Title>
           </div>
         </Space>
-        <Space>
+        <Space size={10}>
+          <GithubButton className="workspace-github-button" />
           <ThemeToggle className="workspace-theme-toggle" />
           {!isMobile && (
             <Button icon={<LogoutOutlined />} onClick={() => void onLogout()}>

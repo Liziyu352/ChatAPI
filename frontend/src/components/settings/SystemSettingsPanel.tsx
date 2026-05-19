@@ -16,6 +16,8 @@ const DEFAULT_CONFIG: SystemConfig = {
   title: '',
   external_registration_enabled: false,
   email_verification_enabled: false,
+  registration_email_domain_restriction_enabled: false,
+  registration_email_domains: '',
 }
 
 export function SystemSettingsPanel({ open, onClose }: SystemSettingsPanelProps) {
@@ -25,6 +27,7 @@ export function SystemSettingsPanel({ open, onClose }: SystemSettingsPanelProps)
   const [saving, setSaving] = useState(false)
   const [testEmail, setTestEmail] = useState('')
   const [sendingTest, setSendingTest] = useState(false)
+  const [registrationEmailDomainsError, setRegistrationEmailDomainsError] = useState('')
 
   useEffect(() => {
     if (!open) return
@@ -40,9 +43,12 @@ export function SystemSettingsPanel({ open, onClose }: SystemSettingsPanelProps)
           title: String(data.title ?? ''),
           external_registration_enabled: Boolean(data.external_registration_enabled),
           email_verification_enabled: Boolean(data.email_verification_enabled),
+          registration_email_domain_restriction_enabled: Boolean(data.registration_email_domain_restriction_enabled),
+          registration_email_domains: String(data.registration_email_domains ?? ''),
         }
         setConfig(nextConfig)
         setSavedConfig(nextConfig)
+        setRegistrationEmailDomainsError('')
       } catch (error) {
         if (!active) return
         appMessage.error(error instanceof Error ? error.message : '系统设置加载失败')
@@ -58,13 +64,25 @@ export function SystemSettingsPanel({ open, onClose }: SystemSettingsPanelProps)
     public_statistics: config.public_statistics !== savedConfig.public_statistics,
     title: config.title_enabled !== savedConfig.title_enabled || config.title !== savedConfig.title,
     registration: config.external_registration_enabled !== savedConfig.external_registration_enabled
-      || config.email_verification_enabled !== savedConfig.email_verification_enabled,
+      || config.email_verification_enabled !== savedConfig.email_verification_enabled
+      || config.registration_email_domain_restriction_enabled !== savedConfig.registration_email_domain_restriction_enabled
+      || config.registration_email_domains !== savedConfig.registration_email_domains,
   }), [config, savedConfig])
 
   const hasUnsavedChanges = Object.values(dirtyState).some(Boolean)
 
   function updateSection<K extends keyof SystemConfig>(key: K, value: SystemConfig[K]) {
+    if (key === 'registration_email_domains') {
+      setRegistrationEmailDomainsError('')
+    }
+    if (key === 'registration_email_domain_restriction_enabled' && !value) {
+      setRegistrationEmailDomainsError('')
+    }
     setConfig((current) => ({ ...current, [key]: value }))
+  }
+
+  function isRegistrationEmailDomainError(message: string) {
+    return message.includes('邮箱域名') || message.includes('允许的域名')
   }
 
   async function handleSave() {
@@ -80,12 +98,19 @@ export function SystemSettingsPanel({ open, onClose }: SystemSettingsPanelProps)
         title: String(data.title ?? ''),
         external_registration_enabled: Boolean(data.external_registration_enabled),
         email_verification_enabled: Boolean(data.email_verification_enabled),
+        registration_email_domain_restriction_enabled: Boolean(data.registration_email_domain_restriction_enabled),
+        registration_email_domains: String(data.registration_email_domains ?? ''),
       }
       setConfig(nextConfig)
       setSavedConfig(nextConfig)
+      setRegistrationEmailDomainsError('')
       appMessage.success('系统设置已保存')
     } catch (error) {
-      appMessage.error(error instanceof Error ? error.message : '系统设置保存失败')
+      const message = error instanceof Error ? error.message : '系统设置保存失败'
+      if (isRegistrationEmailDomainError(message)) {
+        setRegistrationEmailDomainsError(message)
+      }
+      appMessage.error(message)
     } finally {
       setSaving(false)
     }
@@ -197,6 +222,45 @@ export function SystemSettingsPanel({ open, onClose }: SystemSettingsPanelProps)
             checkedChildren="开启"
             unCheckedChildren="关闭"
             onChange={(checked) => updateSection('external_registration_enabled', checked)}
+          />
+        </div>
+
+        <div className="system-settings-row">
+          <Typography.Text className="system-settings-row-title">限制注册邮箱域名</Typography.Text>
+          <div className="system-settings-row-body">
+            <Typography.Text
+              className={`system-settings-row-help ${
+                config.registration_email_domain_restriction_enabled
+                  ? 'system-settings-row-help-hidden'
+                  : 'system-settings-row-help-visible'
+              }`}
+            >
+              开启后，只允许指定域名的邮箱注册，多个域名用英文逗号分隔，例如 example.com,example.org。
+            </Typography.Text>
+            <div
+              className={`system-settings-row-field ${
+                config.registration_email_domain_restriction_enabled
+                  ? 'system-settings-row-field-visible'
+                  : 'system-settings-row-field-hidden'
+              }`}
+            >
+              <Input
+                value={config.registration_email_domains}
+                placeholder="example.com,example.org"
+                allowClear
+                status={registrationEmailDomainsError ? 'error' : undefined}
+                onChange={(event) => updateSection('registration_email_domains', event.target.value)}
+              />
+              {registrationEmailDomainsError ? (
+                <Typography.Text type="danger">{registrationEmailDomainsError}</Typography.Text>
+              ) : null}
+            </div>
+          </div>
+          <Switch
+            checked={config.registration_email_domain_restriction_enabled}
+            checkedChildren="开启"
+            unCheckedChildren="关闭"
+            onChange={(checked) => updateSection('registration_email_domain_restriction_enabled', checked)}
           />
         </div>
 

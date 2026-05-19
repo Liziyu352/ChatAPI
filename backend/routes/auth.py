@@ -42,15 +42,30 @@ def register_auth_routes(
     def _get_logger() -> Logger:
         return current_app.logger
 
+    def _check_registration_email_domain(email: str) -> str | None:
+        if system_config_store.is_registration_email_allowed(email):
+            return None
+        domains = system_config_store.get_registration_email_domains()
+        if not domains:
+            return "当前已开启邮箱域名限制，但未配置允许的域名"
+        return "该邮箱域名不允许注册"
+
     @app.get("/api/auth/register/config")
     def register_config():
         ext_reg = system_config_store.get_system_config("flag.external_registration", "0") == "1"
         email_ver = system_config_store.get_system_config("flag.email_verification", "0") == "1"
+        domain_restriction = system_config_store.get_system_config(
+            "flag.registration_email_domain_restriction",
+            "0",
+        ) == "1"
+        allowed_domains = ",".join(system_config_store.get_registration_email_domains())
         geetest_enabled = bool(settings.geetest_captcha_id)
         return {
             "ok": True,
             "registration_enabled": ext_reg,
             "email_verification_enabled": ext_reg and email_ver,
+            "registration_email_domain_restriction_enabled": domain_restriction,
+            "registration_email_domains": allowed_domains,
             "geetest_enabled": geetest_enabled,
             "geetest_captcha_id": settings.geetest_captcha_id if geetest_enabled else "",
         }
@@ -66,6 +81,10 @@ def register_auth_routes(
         ext_reg = system_config_store.get_system_config("flag.external_registration", "0") == "1"
         if not ext_reg:
             return jsonify({"error": "注册功能未开放"}), 403
+
+        domain_error = _check_registration_email_domain(email)
+        if domain_error is not None:
+            return jsonify({"error": domain_error}), 403
 
         existing = user_store.get_user_by_username(email)
         if existing is not None:
@@ -98,6 +117,10 @@ def register_auth_routes(
         ext_reg = system_config_store.get_system_config("flag.external_registration", "0") == "1"
         if not ext_reg:
             return jsonify({"error": "注册功能未开放"}), 403
+
+        domain_error = _check_registration_email_domain(email)
+        if domain_error is not None:
+            return jsonify({"error": domain_error}), 403
 
         existing = user_store.get_user_by_username(email)
         if existing is not None:

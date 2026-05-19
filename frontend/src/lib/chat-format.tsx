@@ -9,6 +9,10 @@ type RenderableContentPart =
   | { type: 'text'; text: string }
   | { type: 'image'; src: string; detail?: string }
 
+type RenderMessageContentOptions = {
+  onImageClick?: (src: string, detail?: string, alt?: string) => void
+}
+
 function normalizeDisplayText(value: string): string {
   return value
     .replace(/\r\n/g, '\n')
@@ -280,7 +284,11 @@ function parseRenderableContent(rawContent: string): RenderableContentPart[] {
   return parts.length > 0 ? parts : fallback
 }
 
-export function renderMessageContent(rawContent: string) {
+export function renderMessageContent(
+  rawContent: string,
+  options: RenderMessageContentOptions = {},
+) {
+  const { onImageClick } = options
   const parts = parseRenderableContent(rawContent)
   if (parts.length === 0) return null
 
@@ -288,7 +296,15 @@ export function renderMessageContent(rawContent: string) {
     if (part.type === 'image') {
       return (
         <figure key={`${part.src.slice(0, 32)}-${index}`} className="message-image-card">
-          <img src={part.src} alt={`message image ${index + 1}`} className="message-image" />
+          <button
+            type="button"
+            className="message-image-button"
+            onClick={() => onImageClick?.(part.src, part.detail, `message image ${index + 1}`)}
+            aria-label={`放大查看图片 ${index + 1}`}
+            title="点击在网页内全屏查看"
+          >
+            <img src={part.src} alt={`message image ${index + 1}`} className="message-image" />
+          </button>
           {part.detail ? <figcaption>detail: {part.detail}</figcaption> : null}
         </figure>
       )

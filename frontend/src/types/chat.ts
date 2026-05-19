@@ -169,11 +169,15 @@ export type SystemConfig = {
   title: string
   external_registration_enabled: boolean
   email_verification_enabled: boolean
+  registration_email_domain_restriction_enabled: boolean
+  registration_email_domains: string
 }
 
 export type RegisterConfig = {
   registration_enabled: boolean
   email_verification_enabled: boolean
+  registration_email_domain_restriction_enabled: boolean
+  registration_email_domains: string
   geetest_enabled: boolean
   geetest_captcha_id: string
 }

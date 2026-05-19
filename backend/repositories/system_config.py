@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import secrets
 import sqlite3
+import re
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 
 class SystemConfigStore:
+    _DOMAIN_PATTERN = re.compile(r"^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
+
     def __init__(self, db_path: Path):
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -63,6 +66,34 @@ class SystemConfigStore:
     def get_system_config_flag(self, key: str, default: bool = False) -> bool:
         return self.get_system_config(key, "1" if default else "0") == "1"
 
+    def _normalize_registration_email_domains(self, raw: str) -> str:
+        domains: list[str] = []
+        for item in raw.replace("\n", ",").split(","):
+            domain = item.strip().lower()
+            if not domain:
+                continue
+            if domain.startswith("@"):
+                domain = domain[1:]
+            if not self._DOMAIN_PATTERN.fullmatch(domain):
+                raise ValueError(f"无效的邮箱域名：{domain}")
+            domains.append(domain)
+        return ",".join(dict.fromkeys(domains))
+
+    def get_registration_email_domains(self) -> list[str]:
+        raw = self.get_system_config("value.registration_email_domains", "")
+        if not raw.strip():
+            return []
+        return [item for item in self._normalize_registration_email_domains(raw).split(",") if item]
+
+    def is_registration_email_allowed(self, email: str) -> bool:
+        if not self.get_system_config_flag("flag.registration_email_domain_restriction", False):
+            return True
+        domains = set(self.get_registration_email_domains())
+        if not domains or "@" not in email:
+            return False
+        _, domain = email.rsplit("@", 1)
+        return domain.strip().lower() in domains
+
     def get_system_config_snapshot(self) -> dict[str, Any]:
         return {
             "public_statistics": self.get_system_config_flag("public_statistics", False),
@@ -76,9 +107,23 @@ class SystemConfigStore:
                 "flag.email_verification",
                 False,
             ),
+            "registration_email_domain_restriction_enabled": self.get_system_config_flag(
+                "flag.registration_email_domain_restriction",
+                False,
+            ),
+            "registration_email_domains": self.get_system_config("value.registration_email_domains", ""),
         }
 
     def update_system_config_snapshot(self, data: dict[str, Any]) -> None:
+        registration_email_domain_restriction_enabled = bool(
+            data.get("registration_email_domain_restriction_enabled"),
+        )
+        if registration_email_domain_restriction_enabled:
+            registration_email_domains = self._normalize_registration_email_domains(
+                str(data.get("registration_email_domains", "")),
+            )
+        else:
+            registration_email_domains = ""
         self.set_system_config(
             "public_statistics",
             "1" if bool(data.get("public_statistics")) else "0",
@@ -95,6 +140,14 @@ class SystemConfigStore:
         self.set_system_config(
             "flag.email_verification",
             "1" if bool(data.get("email_verification_enabled")) else "0",
+        )
+        self.set_system_config(
+            "flag.registration_email_domain_restriction",
+            "1" if registration_email_domain_restriction_enabled else "0",
+        )
+        self.set_system_config(
+            "value.registration_email_domains",
+            registration_email_domains,
         )
 
     def get_effective_title(self, fallback: str = "") -> str:

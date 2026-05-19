@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 import { App, Avatar, Button, Empty, Spin } from 'antd'
 import { CopyOutlined, UserOutlined } from '@ant-design/icons'
 
@@ -23,6 +25,29 @@ export function ChatMessageList({
   visibleMessages,
 }: ChatMessageListProps) {
   const { message: antMessage } = App.useApp()
+  const [previewImage, setPreviewImage] = useState<null | {
+    alt: string
+    detail?: string
+    src: string
+  }>(null)
+
+  useEffect(() => {
+    if (!previewImage) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setPreviewImage(null)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    document.body.classList.add('image-preview-open')
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.classList.remove('image-preview-open')
+    }
+  }, [previewImage])
 
   if (messagesLoading && visibleMessages.length === 0) {
     return (
@@ -111,7 +136,17 @@ export function ChatMessageList({
             >
               {isToolCall && <div className="message-kind-badge">Tool Call</div>}
               {isToolResult && <div className="message-kind-badge tool-result">Tool Result</div>}
-              <div className="message-content">{renderMessageContent(item.content)}</div>
+              <div className="message-content">
+                {renderMessageContent(item.content, {
+                  onImageClick: (src, detail, alt) => {
+                    setPreviewImage({
+                      alt: alt ?? 'message image',
+                      detail,
+                      src,
+                    })
+                  },
+                })}
+              </div>
               {(isToolCall || isToolResult) && (
                 <div className="message-tool-meta">
                   <div>
@@ -214,6 +249,30 @@ export function ChatMessageList({
             <Spin size="small" />
             <span>正在生成回复...</span>
           </div>
+        </div>
+      )}
+      {previewImage && (
+        <div
+          className="image-preview-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="图片预览"
+          onClick={() => setPreviewImage(null)}
+        >
+          <button
+            type="button"
+            className="image-preview-close"
+            onClick={() => setPreviewImage(null)}
+            aria-label="关闭图片预览"
+          >
+            ×
+          </button>
+          <figure className="image-preview-frame" onClick={(event) => event.stopPropagation()}>
+            <img src={previewImage.src} alt={previewImage.alt} className="image-preview-image" />
+            {previewImage.detail ? (
+              <figcaption className="image-preview-caption">detail: {previewImage.detail}</figcaption>
+            ) : null}
+          </figure>
         </div>
       )}
     </>

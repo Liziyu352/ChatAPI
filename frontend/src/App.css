@@ -1627,9 +1627,26 @@
   margin: 0;
 }
 
+.message-image-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  text-align: left;
+}
+
+.message-image-button:focus-visible {
+  outline: 2px solid rgba(77, 168, 255, 0.7);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
 .message-image {
   display: block;
   max-width: min(100%, 420px);
+  max-height: 260px;
   width: 100%;
   height: auto;
   border-radius: 10px;
@@ -1642,6 +1659,70 @@
   margin-top: 6px;
   font-size: 11px;
   color: var(--app-text-muted);
+}
+
+body.image-preview-open {
+  overflow: hidden;
+}
+
+.image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(12px);
+}
+
+.image-preview-frame {
+  margin: 0;
+  width: min(100%, 1200px);
+  max-height: calc(100vh - 48px);
+  display: grid;
+  gap: 12px;
+  place-items: center;
+}
+
+.image-preview-image {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  object-fit: contain;
+}
+
+.image-preview-caption {
+  max-width: 100%;
+  color: rgba(226, 232, 240, 0.86);
+  font-size: 12px;
+  text-align: center;
+  word-break: break-word;
+}
+
+.image-preview-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 81;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.32);
+}
+
+.image-preview-close:hover,
+.image-preview-close:focus-visible {
+  background: rgba(30, 41, 59, 0.9);
+  outline: none;
 }
 
 .message-tool-meta {
@@ -2066,11 +2147,22 @@
   z-index: 30;
 }
 
+.global-theme-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .workspace-theme-toggle {
   flex: 0 0 auto;
 }
 
-.theme-toggle {
+.workspace-github-button {
+  flex: 0 0 auto;
+}
+
+.theme-toggle,
+.social-link-button {
   position: relative;
   display: inline-grid;
   place-items: center;
@@ -2082,13 +2174,15 @@
   background: transparent;
   color: var(--app-text);
   cursor: pointer;
+  text-decoration: none;
   transition:
     color var(--theme-ease),
     transform var(--theme-ease),
     opacity var(--theme-ease);
 }
 
-.theme-toggle::before {
+.theme-toggle::before,
+.social-link-button::before {
   content: '';
   position: absolute;
   inset: 5px;
@@ -2105,20 +2199,25 @@
 }
 
 .theme-toggle:hover::before,
-.theme-toggle:focus-visible::before {
+.theme-toggle:focus-visible::before,
+.social-link-button:hover::before,
+.social-link-button:focus-visible::before {
   opacity: 1;
   transform: scale(1);
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover,
+.social-link-button:hover {
   transform: translateY(-1px);
 }
 
-.theme-toggle:focus-visible {
+.theme-toggle:focus-visible,
+.social-link-button:focus-visible {
   outline: none;
 }
 
-.theme-toggle-glyph {
+.theme-toggle-glyph,
+.social-link-icon {
   position: relative;
   width: 18px;
   height: 18px;
@@ -2145,6 +2244,12 @@
   stroke-linejoin: round;
 }
 
+.social-link-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
 .theme-toggle-glyph.is-dark .theme-toggle-sun,
 .theme-toggle-glyph.is-light .theme-toggle-moon {
   opacity: 0;
@@ -2157,7 +2262,41 @@
   transform: rotate(0deg) scale(1);
 }
 
-:root[data-theme='dark'] .theme-toggle {
+body[data-route='/'] .theme-toggle,
+body[data-route='/'] .social-link-button {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+body[data-route='/'] .theme-toggle::before,
+body[data-route='/'] .social-link-button::before {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+body[data-route='/'] .theme-toggle:hover,
+body[data-route='/'] .theme-toggle:focus-visible,
+body[data-route='/'] .social-link-button:hover,
+body[data-route='/'] .social-link-button:focus-visible {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+body[data-route='/'] .theme-toggle:hover::before,
+body[data-route='/'] .theme-toggle:focus-visible::before,
+body[data-route='/'] .social-link-button:hover::before,
+body[data-route='/'] .social-link-button:focus-visible::before {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+:root[data-theme='dark'] .theme-toggle,
+:root[data-theme='dark'] .social-link-button {
   color: rgba(226, 232, 240, 0.84);
   background: #0d0f12 !important;
   border: 1px solid #181c23 !important;
@@ -2167,7 +2306,8 @@
   overflow: hidden;
 }
 
-:root[data-theme='dark'] .theme-toggle::before {
+:root[data-theme='dark'] .theme-toggle::before,
+:root[data-theme='dark'] .social-link-button::before {
   inset: 0;
   background: linear-gradient(180deg, #131f2c, #181c23) !important;
   border-color: #181c23 !important;
@@ -2176,19 +2316,24 @@
 }
 
 :root[data-theme='dark'] .theme-toggle:hover,
-:root[data-theme='dark'] .theme-toggle:focus-visible {
+:root[data-theme='dark'] .theme-toggle:focus-visible,
+:root[data-theme='dark'] .social-link-button:hover,
+:root[data-theme='dark'] .social-link-button:focus-visible {
   color: #f8fbff;
   border-color: #243142 !important;
   background: #0d0f12 !important;
 }
 
 :root[data-theme='dark'] .theme-toggle:hover::before,
-:root[data-theme='dark'] .theme-toggle:focus-visible::before {
+:root[data-theme='dark'] .theme-toggle:focus-visible::before,
+:root[data-theme='dark'] .social-link-button:hover::before,
+:root[data-theme='dark'] .social-link-button:focus-visible::before {
   background: linear-gradient(180deg, #1a2a3c, #181c23) !important;
   border-color: #243142 !important;
 }
 
-:root[data-theme='dark'] .theme-toggle-glyph svg {
+:root[data-theme='dark'] .theme-toggle-glyph svg,
+:root[data-theme='dark'] .social-link-icon svg {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.32));
 }
 
