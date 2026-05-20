@@ -263,24 +263,17 @@ def _send_brevo_email(to: str, subject: str, body: str, *, logger: Logger) -> tu
 
 def _build_tencentcloud_template_data(
     *,
-    subject: str,
-    text_body: str,
-    html_body: str | None,
+    action: str,
     code: str = "",
 ) -> str:
-    template_data: dict[str, str] = {
-        "subject": subject,
-        "title": subject,
-        "content": text_body,
-        "body": text_body,
-        "text": text_body,
-    }
-    if html_body is not None:
-        template_data["html"] = html_body
-    if code:
-        template_data["code"] = code
-        template_data["verification_code"] = code
-    return json.dumps(template_data, ensure_ascii=False, separators=(",", ":"))
+    return json.dumps(
+        {
+            "action": action,
+            "code": code,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
 
 
 def _send_tencentcloud_email(
@@ -290,6 +283,7 @@ def _send_tencentcloud_email(
     *,
     html_body: str | None,
     trigger_type: int,
+    action: str = "",
     code: str = "",
     logger: Logger,
 ) -> tuple[bool, str]:
@@ -312,9 +306,7 @@ def _send_tencentcloud_email(
 
     region = settings.tencentcloud_ses_region.strip() or _TENCENTCLOUD_SES_DEFAULT_REGION
     template_data = _build_tencentcloud_template_data(
-        subject=subject,
-        text_body=text_body,
-        html_body=html_body,
+        action=action,
         code=code,
     )
 
@@ -388,6 +380,7 @@ def _send_email(
     *,
     html_body: str | None = None,
     trigger_type: int = 1,
+    action: str = "",
     code: str = "",
     logger: Logger,
 ) -> tuple[bool, str]:
@@ -403,6 +396,7 @@ def _send_email(
             text_body,
             html_body=html_body,
             trigger_type=trigger_type,
+            action=action,
             code=code,
             logger=logger,
         )
@@ -422,6 +416,7 @@ def send_test_email(to: str, *, provider: str = "", logger: Logger) -> tuple[boo
         body,
         html_body=html,
         trigger_type=0,
+        action="测试",
         logger=logger,
     )
 
@@ -438,6 +433,7 @@ def send_verification_email(to: str, code: str, *, provider: str = "", logger: L
         body,
         html_body=html,
         trigger_type=1,
+        action="注册",
         code=code,
         logger=logger,
     )

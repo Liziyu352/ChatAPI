@@ -111,7 +111,16 @@ export function ConversationSidebar({
     <div className={`sidebar-inner ${collapsed ? 'collapsed' : ''}`}>
       <div className="sidebar-top">
         <div className="sidebar-top-copy">
-          <Typography.Text className="eyebrow">ChatAPI</Typography.Text>
+          <a
+            className="eyebrow sidebar-brand-link"
+            href="https://github.com/zyf2007/ChatAPI"
+            target="_blank"
+            rel="noreferrer noopener"
+            aria-label="打开 ChatAPI GitHub 仓库"
+            title="打开 ChatAPI GitHub 仓库"
+          >
+            ChatAPI
+          </a>
           {!collapsed ? (
             <Typography.Title level={4} className="sidebar-title">
               会话

@@ -769,6 +769,24 @@
   color: var(--app-text-muted) !important;
 }
 
+.sidebar-brand-link {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  text-decoration: none;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+.sidebar-brand-link:hover,
+.sidebar-brand-link:focus-visible {
+  color: #4da8ff !important;
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
 .sidebar-title,
 .chat-title,
 .login-title {
