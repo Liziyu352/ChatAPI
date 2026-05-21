@@ -138,7 +138,7 @@ class TurnCoordinator:
                 status=429,
             )
 
-        conversation, conversation_error = resolve_conversation_for_request(
+        resolved_conversation, conversation_error = resolve_conversation_for_request(
             self.store,
             normalized_data,
             owner,
@@ -147,16 +147,24 @@ class TurnCoordinator:
         if conversation_error is not None:
             message, status = conversation_error
             return build_openai_error(message, code="not_found", status=status)
+        conversation = (
+            resolved_conversation.conversation
+            if resolved_conversation is not None
+            else None
+        )
         if conversation is None:
             conversation = self.store.create_conversation(owner, title=build_title(context_text))
 
         existing_pending = self.pending_turns.get_by_conversation(conversation.id)
         if existing_pending is not None:
-            return build_openai_error(
-                "conversation is waiting for a reply",
-                code="conflict",
-                status=409,
-            )
+            if resolved_conversation is not None and resolved_conversation.source == "history":
+                conversation = self.store.create_conversation(owner, title=build_title(context_text))
+            else:
+                return build_openai_error(
+                    "conversation is waiting for a reply",
+                    code="conflict",
+                    status=409,
+                )
 
         extracted_messages = extract_request_messages(
             self.store,

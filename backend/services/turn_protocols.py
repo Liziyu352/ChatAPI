@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import uuid
+from dataclasses import dataclass
 from typing import Any
 
 from ..core.auth import AuthContext
@@ -10,6 +11,12 @@ from ..repositories import ConversationStore
 
 
 _IMAGE_URL_RE = re.compile(r"^(?:https?://[^\s\"']+)?/api/uploads/imgs/[A-Za-z0-9._-]+(?:\?.*)?$", re.IGNORECASE)
+
+
+@dataclass(frozen=True)
+class ResolvedConversation:
+    conversation: Any
+    source: str
 
 
 def normalize_message_text(value: str) -> str:
@@ -452,18 +459,18 @@ def resolve_conversation_for_request(
     data: dict[str, Any],
     owner: str,
     request_format: str,
-):
+) -> tuple[ResolvedConversation | None, tuple[str, int] | None]:
     explicit_conversation_id = str(data.get("conversation_id", "")).strip()
     if explicit_conversation_id:
         conversation = store.get_conversation(explicit_conversation_id, owner)
         if conversation is None:
             return None, ("conversation not found", 404)
-        return conversation, None
+        return ResolvedConversation(conversation=conversation, source="explicit_id"), None
 
     for call_id in extract_tool_result_call_ids(data, request_format):
         conversation = store.find_conversation_by_tool_call_id(owner, call_id)
         if conversation is not None:
-            return conversation, None
+            return ResolvedConversation(conversation=conversation, source="tool_call_id"), None
 
     conversation = resolve_conversation_by_history_strategies(
         store,
@@ -472,7 +479,7 @@ def resolve_conversation_for_request(
         request_format,
     )
     if conversation is not None:
-        return conversation, None
+        return ResolvedConversation(conversation=conversation, source="history"), None
 
     return None, None
 
