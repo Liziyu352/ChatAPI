@@ -194,7 +194,12 @@ def stream_pending_turn(
                 "id": item_id,
                 "type": "reasoning",
                 "status": "completed",
-                "summary": [],
+                "summary": [
+                    {
+                        "type": "summary_text",
+                        "text": text,
+                    }
+                ],
                 "content": [
                     {
                         "type": "reasoning_text",
@@ -218,46 +223,49 @@ def stream_pending_turn(
                 },
             )
             yield emit(
-                "response.content_part.added",
+                "response.reasoning_summary_part.added",
                 {
-                    "type": "response.content_part.added",
-                    "content_index": 0,
+                    "type": "response.reasoning_summary_part.added",
                     "item_id": item_id,
                     "output_index": item_index,
+                    "summary_index": 0,
                     "part": {
-                        "type": "reasoning_text",
+                        "type": "summary_text",
                         "text": "",
                     },
                 },
             )
             yield emit(
-                "response.reasoning_text.delta",
+                "response.reasoning_summary_text.delta",
                 {
-                    "type": "response.reasoning_text.delta",
-                    "content_index": 0,
+                    "type": "response.reasoning_summary_text.delta",
                     "delta": text,
                     "item_id": item_id,
                     "output_index": item_index,
+                    "summary_index": 0,
                 },
             )
             yield emit(
-                "response.reasoning_text.done",
+                "response.reasoning_summary_text.done",
                 {
-                    "type": "response.reasoning_text.done",
-                    "content_index": 0,
+                    "type": "response.reasoning_summary_text.done",
                     "item_id": item_id,
                     "output_index": item_index,
+                    "summary_index": 0,
                     "text": text,
                 },
             )
             yield emit(
-                "response.content_part.done",
+                "response.reasoning_summary_part.done",
                 {
-                    "type": "response.content_part.done",
-                    "content_index": 0,
+                    "type": "response.reasoning_summary_part.done",
                     "item_id": item_id,
                     "output_index": item_index,
-                    "part": item["content"][0],
+                    "summary_index": 0,
+                    "part": {
+                        "type": "summary_text",
+                        "text": text,
+                    },
                 },
             )
             yield emit(
